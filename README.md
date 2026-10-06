@@ -1,4 +1,4 @@
-# Fractal-texture-defect-detection
+# fractal-texture-defect-detection
 
 Training-free detection of defects in textures by invariant block matching against a few defect-free reference images.
 The detector is derived from the encoder of a fractal (partitioned iterated function system, PIFS) image codec: every block of
@@ -53,7 +53,8 @@ The protocol, its two amendments and the outcome of the decision rule are in [PR
 | `run_patchcore.py` | PatchCore and PaDiM through anomalib; saves per-tile scores |
 | `bootstrap_ci.py` | Paired bootstrap for AUROC and FPR95; `--by-strip` resamples whole strips (cluster bootstrap) |
 | `summarize_v3.py` | Tables from the saved scores, decision rule |
-| `run_core_v3.sh`, `run_extra_v3.sh` | Full runs of the main experiments, and of the ablation, sensitivity and reference-choice experiments |
+| `run_core_v3.sh`, `run_extra_v3.sh` | Full runs of the main experiments, and of gain invariance, sensitivity and reference-choice experiments |
+| `run_ablation_v3.sh` | The four ablation variants of the paper (centring only; fit without bounds, with and without normalisation; bounded fit without normalisation) |
 | `make_report_v3.sh`, `make_report_extra.sh`, `optional_intervals.sh` | Reports and intervals recomputed from saved scores in seconds |
 | `v3res/` | Per-tile scores of every run, `REPORT_core.txt`, `intervals.txt` |
 | `PROTOCOL.md` | Protocol fixed before the final run, amendments, deviation log |
@@ -75,7 +76,8 @@ The datasets are not redistributed here.
 
 * **AITEX Fabric Image Database** (Silvestre-Blanes et al., Autex Research Journal, 2019): <https://www.aitex.es/afid/>.
   The scripts expect the folders `Defect_images`, `Mask_images` and `NODefect_images/<fabric>` (as in the Kaggle copy).
-  Check the terms of the copy you download and cite the original paper.
+  The Kaggle copy is licensed CC BY-NC-ND 4.0 (non-commercial, no derivatives), which is why this repository publishes
+  scripts and scores but no tiles or other adapted images. Cite the original paper.
 * **MVTec AD** (Bergmann et al., CVPR 2019): <https://www.mvtec.com/company/research/datasets/mvtec-ad>, licence CC BY-NC-SA 4.0
   (non-commercial use).
 
@@ -105,7 +107,8 @@ from the repository root.
 
 ```bash
 bash run_core_v3.sh      # about 1-1.5 hours: main design with 1 and 4 references, control design, report
-bash run_extra_v3.sh     # about 35-40 minutes: gain invariance, ablation steps, sensitivity, choice of the reference
+bash run_extra_v3.sh     # about 35-40 minutes: gain invariance, sensitivity, choice of the reference
+bash run_ablation_v3.sh  # about 25 minutes: the ablation variants (needs the prepared data of run_core_v3.sh)
 ```
 
 `caffeinate -i bash ...` keeps a Mac awake. PatchCore results depend on the anomalib and PyTorch versions and on the random
