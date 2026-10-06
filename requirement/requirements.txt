@@ -1,0 +1,6 @@
+# Detector, data preparation, statistics (bootstrap_ci.py, summarize_v3.py,
+# eval_mvtec.py, prepare_aitex_v3.py, measure_light.py, filter_edges.py).
+# CPU only: no GPU, no pretrained weights, no neural network.
+# Python 3.10 or newer (put the exact version you ran: python --version).
+numpy>=1.24
+Pillow>=9.0
