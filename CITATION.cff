@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software or the saved scores, please cite it using the metadata below."
+type: software
+title: "fractal-texture-defect-detection"
+abstract: >-
+  Training-free detection of defects in textures by invariant block matching against a few defect-free
+  reference images. The detector is derived from the encoder of a fractal (PIFS) image codec. The repository
+  contains the code, the evaluation protocol and the per-tile scores of the experiments on AITEX and MVTec AD.
+authors:
+  - family-names: "Kalinkin"
+    given-names: "V. A."
+    affiliation: "St. Petersburg State University of Economics"
+    email: "vasilykalinkin@gmail.com"
+# Replace USERNAME with the GitHub account, and add the Zenodo DOI after the first release:
+repository-code: "https://github.com/USERNAME/fractal-texture-defect-detection"
+# doi: "10.5281/zenodo.XXXXXXX"
+license: MIT
+version: "1.0.0"
+date-released: "2026-10-06"
+keywords:
+  - texture defect detection
+  - anomaly detection
+  - fractal image coding
+  - block matching
+  - fabric inspection
+# After acceptance, uncomment and complete (volume, pages, year) so that GitHub shows the paper as the preferred citation:
+# preferred-citation:
+#   type: article
+#   authors:
+#     - family-names: "Kalinkin"
+#       given-names: "V. A."
+#   title: "From fractal image coding to training-free texture defect detection: invariant block matching with a few reference images"
+#   journal: "Electronic Letters on Computer Vision and Image Analysis"
+#   year: 2026
