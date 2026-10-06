@@ -12,7 +12,7 @@ authors:
     affiliation: "St. Petersburg State University of Economics"
     email: "vasilykalinkin@gmail.com"
 # Replace USERNAME with the GitHub account, and add the Zenodo DOI after the first release:
-repository-code: "https://github.com/USERNAME/fractal-texture-defect-detection"
+repository-code: "https://github.com/VasilLisgran/Fractal-texture-defect-detection"
 # doi: "10.5281/zenodo.XXXXXXX"
 license: MIT
 version: "1.0.0"
