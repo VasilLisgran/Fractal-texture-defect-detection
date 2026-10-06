@@ -1,0 +1,9 @@
+# Baselines of the paper: PatchCore and PaDiM (run_patchcore.py).
+# Needs everything in requirements.txt plus the library below.
+# anomalib pulls in PyTorch and Lightning; the paper ran everything on CPU.
+# For a CPU-only PyTorch build (smaller download) install it first:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+anomalib==2.6.2
+torch
+torchvision
