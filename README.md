@@ -53,9 +53,8 @@ The protocol, its two amendments and the outcome of the decision rule are in [PR
 | `run_patchcore.py` | PatchCore and PaDiM through anomalib; saves per-tile scores |
 | `bootstrap_ci.py` | Paired bootstrap for AUROC and FPR95; `--by-strip` resamples whole strips (cluster bootstrap) |
 | `summarize_v3.py` | Tables from the saved scores, decision rule |
-| `run_core_v3.sh`, `run_extra_v3.sh` | Full runs of the main experiments, and of gain invariance, sensitivity and reference-choice experiments |
-| `run_ablation_v3.sh` | The four ablation variants of the paper (centring only; fit without bounds, with and without normalisation; bounded fit without normalisation) |
-| `make_report_v3.sh`, `make_report_extra.sh`, `optional_intervals.sh` | Reports and intervals recomputed from saved scores in seconds |
+| `run_all_v3.sh` | The batch of runs behind the paper: data preparation, main design with 1 and 4 references, control design, ablation variants (sections 1-4; see the note below) |
+| `make_report_v3.sh`, `optional_intervals.sh` | Reports and intervals recomputed from saved scores in seconds |
 | `v3res/` | Per-tile scores of every run, `REPORT_core.txt`, `intervals.txt` |
 | `PROTOCOL.md` | Protocol fixed before the final run, amendments, deviation log |
 
@@ -102,14 +101,14 @@ python3 bootstrap_ci.py --by-strip --exclude fabric_05 \
 
 ### B. Rerun everything (laptop CPU)
 
-Set `ARCH` (the AITEX `archive` folder) and `DATA` (where the prepared tiles go) at the top of the two scripts, then run them
+Set `ARCH` (the AITEX `archive` folder) and `DATA` (where the prepared tiles go) at the top of the scripts, then run them
 from the repository root.
 
 ```bash
-bash run_core_v3.sh      # about 1-1.5 hours: main design with 1 and 4 references, control design, report
-bash run_extra_v3.sh     # about 35-40 minutes: gain invariance, sensitivity, choice of the reference
-bash run_ablation_v3.sh  # about 25 minutes: the ablation variants (needs the prepared data of run_core_v3.sh)
+bash run_all_v3.sh       # several hours on a laptop CPU; writes the score files to v3res/ and the report v3res/REPORT.txt
 ```
+
+The score files in `v3res/` were produced by sections 1 to 4 of `run_all_v3.sh`. The run was stopped after the ablation section: the step `abl_iso` (isometries without the brightness term) did not complete, and sections 5 to 7 (sensitivity to parameters, gain invariance, choice of the reference) were not run, so their outputs are not in `v3res/` and are not used in the paper. `make_report_v3.sh` then built `v3res/REPORT_core.txt` from the saved scores, and `optional_intervals.sh` built `intervals.txt`.
 
 `caffeinate -i bash ...` keeps a Mac awake. PatchCore results depend on the anomalib and PyTorch versions and on the random
 coreset, so small differences from the numbers above are expected; `v3res/` holds the scores behind the paper.
