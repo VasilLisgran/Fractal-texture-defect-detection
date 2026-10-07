@@ -1,0 +1,72 @@
+{
+  "fabric_00": {
+    "image_AUROC": 0.9870129823684692,
+    "pixel_AUROC": 0.9397472143173218,
+    "all_metrics": {
+      "image_AUROC": 0.9870129823684692,
+      "image_F1Score": 0.800000011920929,
+      "pixel_AUROC": 0.9397472143173218,
+      "pixel_F1Score": 0.18560422956943512
+    }
+  },
+  "fabric_01": {
+    "image_AUROC": 0.9821428656578064,
+    "pixel_AUROC": 0.965484082698822,
+    "all_metrics": {
+      "image_AUROC": 0.9821428656578064,
+      "image_F1Score": 0.8979591727256775,
+      "pixel_AUROC": 0.965484082698822,
+      "pixel_F1Score": 0.5760924220085144
+    }
+  },
+  "fabric_02": {
+    "image_AUROC": 0.8712121248245239,
+    "pixel_AUROC": 0.9751294255256653,
+    "all_metrics": {
+      "image_AUROC": 0.8712121248245239,
+      "image_F1Score": 0.7441860437393188,
+      "pixel_AUROC": 0.9751294255256653,
+      "pixel_F1Score": 0.1616215854883194
+    }
+  },
+  "fabric_03": {
+    "image_AUROC": 0.7113947868347168,
+    "pixel_AUROC": 0.9415623545646667,
+    "all_metrics": {
+      "image_AUROC": 0.7113947868347168,
+      "image_F1Score": 0.7764706015586853,
+      "pixel_AUROC": 0.9415623545646667,
+      "pixel_F1Score": 0.5044253468513489
+    }
+  },
+  "fabric_04": {
+    "image_AUROC": 0.789393961429596,
+    "pixel_AUROC": 0.9678804278373718,
+    "all_metrics": {
+      "image_AUROC": 0.789393961429596,
+      "image_F1Score": 0.5,
+      "pixel_AUROC": 0.9678804278373718,
+      "pixel_F1Score": 0.1676226258277893
+    }
+  },
+  "fabric_05": {
+    "image_AUROC": 0.2666666507720947,
+    "pixel_AUROC": 0.8845034241676331,
+    "all_metrics": {
+      "image_AUROC": 0.2666666507720947,
+      "image_F1Score": 0.0,
+      "pixel_AUROC": 0.8845034241676331,
+      "pixel_F1Score": 0.0010888476390391588
+    }
+  },
+  "fabric_06": {
+    "image_AUROC": 0.8571428656578064,
+    "pixel_AUROC": 0.5355210900306702,
+    "all_metrics": {
+      "image_AUROC": 0.8571428656578064,
+      "image_F1Score": 0.4000000059604645,
+      "pixel_AUROC": 0.5355210900306702,
+      "pixel_F1Score": 0.004386423155665398
+    }
+  }
+}

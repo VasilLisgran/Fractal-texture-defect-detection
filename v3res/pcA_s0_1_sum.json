@@ -1,0 +1,72 @@
+{
+  "fabric_00": {
+    "image_AUROC": 1.0,
+    "pixel_AUROC": 0.9744629859924316,
+    "all_metrics": {
+      "image_AUROC": 1.0,
+      "image_F1Score": 0.9230769276618958,
+      "pixel_AUROC": 0.9744629859924316,
+      "pixel_F1Score": 0.26316311955451965
+    }
+  },
+  "fabric_01": {
+    "image_AUROC": 0.9908151626586914,
+    "pixel_AUROC": 0.9735153913497925,
+    "all_metrics": {
+      "image_AUROC": 0.9908151626586914,
+      "image_F1Score": 0.9166666865348816,
+      "pixel_AUROC": 0.9735153913497925,
+      "pixel_F1Score": 0.6184558868408203
+    }
+  },
+  "fabric_02": {
+    "image_AUROC": 0.8920454978942871,
+    "pixel_AUROC": 0.9859387874603271,
+    "all_metrics": {
+      "image_AUROC": 0.8920454978942871,
+      "image_F1Score": 0.6800000071525574,
+      "pixel_AUROC": 0.9859387874603271,
+      "pixel_F1Score": 0.325737863779068
+    }
+  },
+  "fabric_03": {
+    "image_AUROC": 0.8751615285873413,
+    "pixel_AUROC": 0.9350953102111816,
+    "all_metrics": {
+      "image_AUROC": 0.8751615285873413,
+      "image_F1Score": 0.8551723957061768,
+      "pixel_AUROC": 0.9350953102111816,
+      "pixel_F1Score": 0.594493567943573
+    }
+  },
+  "fabric_04": {
+    "image_AUROC": 0.810606062412262,
+    "pixel_AUROC": 0.9245789647102356,
+    "all_metrics": {
+      "image_AUROC": 0.810606062412262,
+      "image_F1Score": 0.5517241358757019,
+      "pixel_AUROC": 0.9245789647102356,
+      "pixel_F1Score": 0.01844262331724167
+    }
+  },
+  "fabric_05": {
+    "image_AUROC": 1.0,
+    "pixel_AUROC": 0.999541699886322,
+    "all_metrics": {
+      "image_AUROC": 1.0,
+      "image_F1Score": 0.0,
+      "pixel_AUROC": 0.999541699886322,
+      "pixel_F1Score": 0.32335329055786133
+    }
+  },
+  "fabric_06": {
+    "image_AUROC": 0.798872172832489,
+    "pixel_AUROC": 0.8023239970207214,
+    "all_metrics": {
+      "image_AUROC": 0.798872172832489,
+      "image_F1Score": 0.3529411852359772,
+      "pixel_AUROC": 0.8023239970207214,
+      "pixel_F1Score": 0.0011074685025960207
+    }
+  }
+}

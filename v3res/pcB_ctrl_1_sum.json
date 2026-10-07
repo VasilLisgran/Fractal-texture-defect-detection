@@ -1,0 +1,72 @@
+{
+  "fabric_00": {
+    "image_AUROC": 0.725806474685669,
+    "pixel_AUROC": 0.8670756816864014,
+    "all_metrics": {
+      "image_AUROC": 0.725806474685669,
+      "image_F1Score": 0.4444444477558136,
+      "pixel_AUROC": 0.8670756816864014,
+      "pixel_F1Score": 0.2621448338031769
+    }
+  },
+  "fabric_01": {
+    "image_AUROC": 0.9793148040771484,
+    "pixel_AUROC": 0.9822243452072144,
+    "all_metrics": {
+      "image_AUROC": 0.9793148040771484,
+      "image_F1Score": 0.8627451062202454,
+      "pixel_AUROC": 0.9822243452072144,
+      "pixel_F1Score": 0.6224245429039001
+    }
+  },
+  "fabric_02": {
+    "image_AUROC": 0.7421922087669373,
+    "pixel_AUROC": 0.9741143584251404,
+    "all_metrics": {
+      "image_AUROC": 0.7421922087669373,
+      "image_F1Score": 0.35555556416511536,
+      "pixel_AUROC": 0.9741143584251404,
+      "pixel_F1Score": 0.12675903737545013
+    }
+  },
+  "fabric_03": {
+    "image_AUROC": 0.8058552742004395,
+    "pixel_AUROC": 0.9312598705291748,
+    "all_metrics": {
+      "image_AUROC": 0.8058552742004395,
+      "image_F1Score": 0.6811594367027283,
+      "pixel_AUROC": 0.9312598705291748,
+      "pixel_F1Score": 0.4675389230251312
+    }
+  },
+  "fabric_04": {
+    "image_AUROC": 0.7578303813934326,
+    "pixel_AUROC": 0.9135096669197083,
+    "all_metrics": {
+      "image_AUROC": 0.7578303813934326,
+      "image_F1Score": 0.41025641560554504,
+      "pixel_AUROC": 0.9135096669197083,
+      "pixel_F1Score": 0.01377860363572836
+    }
+  },
+  "fabric_05": {
+    "image_AUROC": 1.0,
+    "pixel_AUROC": 0.9991408586502075,
+    "all_metrics": {
+      "image_AUROC": 1.0,
+      "image_F1Score": 0.0,
+      "pixel_AUROC": 0.9991408586502075,
+      "pixel_F1Score": 0.3162650465965271
+    }
+  },
+  "fabric_06": {
+    "image_AUROC": 0.7560297250747681,
+    "pixel_AUROC": 0.7994542717933655,
+    "all_metrics": {
+      "image_AUROC": 0.7560297250747681,
+      "image_F1Score": 0.3125,
+      "pixel_AUROC": 0.7994542717933655,
+      "pixel_F1Score": 0.0010848811361938715
+    }
+  }
+}

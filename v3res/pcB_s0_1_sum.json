@@ -1,0 +1,72 @@
+{
+  "fabric_00": {
+    "image_AUROC": 1.0,
+    "pixel_AUROC": 0.9147573113441467,
+    "all_metrics": {
+      "image_AUROC": 1.0,
+      "image_F1Score": 0.9230769276618958,
+      "pixel_AUROC": 0.9147573113441467,
+      "pixel_F1Score": 0.2572799324989319
+    }
+  },
+  "fabric_01": {
+    "image_AUROC": 0.9902411103248596,
+    "pixel_AUROC": 0.9732214212417603,
+    "all_metrics": {
+      "image_AUROC": 0.9902411103248596,
+      "image_F1Score": 0.9166666865348816,
+      "pixel_AUROC": 0.9732214212417603,
+      "pixel_F1Score": 0.6194754838943481
+    }
+  },
+  "fabric_02": {
+    "image_AUROC": 0.9002525210380554,
+    "pixel_AUROC": 0.9858566522598267,
+    "all_metrics": {
+      "image_AUROC": 0.9002525210380554,
+      "image_F1Score": 0.6808510422706604,
+      "pixel_AUROC": 0.9858566522598267,
+      "pixel_F1Score": 0.32669925689697266
+    }
+  },
+  "fabric_03": {
+    "image_AUROC": 0.8487981557846069,
+    "pixel_AUROC": 0.9295747876167297,
+    "all_metrics": {
+      "image_AUROC": 0.8487981557846069,
+      "image_F1Score": 0.8055555820465088,
+      "pixel_AUROC": 0.9295747876167297,
+      "pixel_F1Score": 0.5938202142715454
+    }
+  },
+  "fabric_04": {
+    "image_AUROC": 0.8232322931289673,
+    "pixel_AUROC": 0.9263379573822021,
+    "all_metrics": {
+      "image_AUROC": 0.8232322931289673,
+      "image_F1Score": 0.5517241358757019,
+      "pixel_AUROC": 0.9263379573822021,
+      "pixel_F1Score": 0.018829787150025368
+    }
+  },
+  "fabric_05": {
+    "image_AUROC": 1.0,
+    "pixel_AUROC": 0.9995063543319702,
+    "all_metrics": {
+      "image_AUROC": 1.0,
+      "image_F1Score": 0.0,
+      "pixel_AUROC": 0.9995063543319702,
+      "pixel_F1Score": 0.32258063554763794
+    }
+  },
+  "fabric_06": {
+    "image_AUROC": 0.7744361162185669,
+    "pixel_AUROC": 0.8020631670951843,
+    "all_metrics": {
+      "image_AUROC": 0.7744361162185669,
+      "image_F1Score": 0.3333333432674408,
+      "pixel_AUROC": 0.8020631670951843,
+      "pixel_F1Score": 0.001118083600886166
+    }
+  }
+}
