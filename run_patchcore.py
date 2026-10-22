@@ -7,8 +7,6 @@ PatchCore (anomalib 2.x) на папках, подготовленных make_sh
 
 Обучение = построение банка признаков из train/good (там ровно k эталонов),
 тест = снимки со сдвигом условий. Печатает AUROC по изображению и по пикселям.
-Скрипт написан под anomalib 2.x и НЕ проверен на реальном запуске (у автора не было доступа к весам сети):
-если упадёт - пришлите текст ошибки целиком.
 """
 import argparse, json, os, time
 
@@ -36,9 +34,11 @@ def _to_list(x):
         x = [x]
     return list(x)
 
-
+"""В разных версиях anomalib возвращаются разные структуры вывода 
+с одной и той же информацией, поэтому приводим к единому виду."""
 def _field(batch, names):
     for n in names:
+        """Два вида: батч со словарями или батч с объектами. Везде берём атрибут"""
         if isinstance(batch, dict) and n in batch:
             return batch[n]
         if hasattr(batch, n):
@@ -47,10 +47,10 @@ def _field(batch, names):
                 return v
     return None
 
-
+"""Оценка каждого батча из engine.predict"""
 def extract_scores(preds):
-    """Оценка каждого снимка из результата engine.predict (anomalib 1.x: словари, 2.x: объекты-батчи)."""
     out = []
+    # Цикл по батчам (по пачке картинок)
     for b in preds or []:
         paths = _to_list(_field(b, ['image_path', 'image_paths']))
         scores = _to_list(_field(b, ['pred_score', 'pred_scores', 'anomaly_score']))
@@ -58,6 +58,7 @@ def extract_scores(preds):
             raise RuntimeError('не нашёл image_path/pred_score; поля батча: ' +
                                str(list(b.keys()) if isinstance(b, dict) else [a for a in dir(b) if not a.startswith('_')]))
         for p, sc in zip(paths, scores):
+            # Извлекаем аномальность и путь
             sc = sc[0] if isinstance(sc, (list, tuple)) else sc
             d = os.path.basename(os.path.dirname(str(p)))
             out.append({'key': f'{d}/{os.path.basename(str(p))}', 'type': d,
@@ -86,32 +87,44 @@ def main():
     else:
         from anomalib.models import Patchcore
 
+    '''Знак ~ обозначает домашнюю папку пользователя, но Python сам по себе его не понимает. 
+    expanduser заменяет его на настоящий путь'''
     root = os.path.expanduser(a.root)
+
+    '''Ткань -> метрики и оценка каждого тайла'''
     allres = {}
     score_log = []
     for cat in a.cat:
         t0 = time.time()
         dm = make_datamodule(root, cat)
         import inspect
+        # Перечень параметров, которые модель принимает
         supported = set(inspect.signature(Patchcore.__init__).parameters)
-        want = {'coreset_sampling_ratio': a.coreset}
+        '''Сколько признаков оставить'''
+        want = {'coreset_sampling_ratio': a.coreset } 
+        
         if a.backbone: want['backbone'] = a.backbone
         if a.layers: want['layers'] = a.layers
         if a.neighbors: want['num_neighbors'] = a.neighbors
-        kwargs = {k: v for k, v in want.items() if k in supported}
-        skipped = sorted(set(want) - set(kwargs))
+
+        kwargs = {k: v for k, v in want.items() if k in supported} #оставить то что есть в поддерживаемых
+        skipped = sorted(set(want) - set(kwargs)) # Что пропустили?
         print(a.model, 'параметры:', kwargs, ('(не поддерживаются этой версией: %s)' % skipped) if skipped else '')
+        
         model = Patchcore(**kwargs)
         engine = Engine(accelerator=a.accelerator, devices=1)
+        # нарезка эталонов
         engine.fit(model=model, datamodule=dm)
         res = engine.test(model=model, datamodule=dm)
+
         t_fit_test = time.time() - t0
         try:
             print('    препроцессинг:', getattr(model, 'pre_processor', None).transform, flush=True)
         except Exception:
             pass
+
         r = res[0] if isinstance(res, list) and res else res
-        img = r.get('image_AUROC'); pix = r.get('pixel_AUROC')
+        img = r.get('image_AUROC'); pix = r.get('pixel_AUROC') # get не падает с ошибкой если нет ключа
         allres[cat] = {'image_AUROC': float(img) if img is not None else None,
                        'pixel_AUROC': float(pix) if pix is not None else None,
                        'all_metrics': {k: float(v) for k, v in r.items()}}
@@ -134,6 +147,8 @@ def main():
         mi = sum(v['image_AUROC'] for v in vals) / len(vals)
         mp = [v['pixel_AUROC'] for v in vals if v['pixel_AUROC'] is not None]
         print(f'\n=== Среднее: PatchCore  AUROC(изобр.) {mi:.3f}   AUROC(пиксель) {sum(mp) / len(mp):.3f}' if mp else f'\n=== Среднее: AUROC(изобр.) {mi:.3f}')
+
+    # Сохранение
     if a.save_scores:
         with open(a.save_scores, 'w') as f:
             json.dump({'source': 'patchcore', 'meta': vars(a), 'records': score_log}, f, ensure_ascii=False)
