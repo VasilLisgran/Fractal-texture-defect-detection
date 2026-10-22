@@ -1,189 +1,129 @@
 # -*- coding: utf-8 -*-
 """
-Сводка пакета прогонов v3: читает все json с оценками снимков из папки результатов и печатает таблицы.
-Правило исключения тканей (из протокола): ткань не учитывается, если в ней меньше 5 дефектных тайлов.
+Готовит AITEX (версия с Kaggle: Defect_images / Mask_images / NODefect_images/<папка ткани>)
+в структуре MVTec, чтобы eval_mvtec.py и run_patchcore.py работали без изменений.
 
-Скрипт ничего не запускает и не обучает: он только читает готовые оценки каждого тайла (их записывают
-eval_mvtec.py и run_patchcore.py) и считает по ним метрики. Доверительные интервалы здесь не строятся,
-их считает bootstrap_ci.py.
+Полосы ткани 4096 x 256 режутся на квадраты 256 x 256 в исходном разрешении (16 квадратов на полосу).
+Для каждой ткани (fabric_00 ... fabric_06) и каждого числа эталонов k:
+    <out>/<k>shot/fabric_XX/train/good/          - k квадратов из ПЕРВОЙ нормальной полосы (равномерно по длине)
+    <out>/<k>shot/fabric_XX/test/good/           - квадраты из остальных нормальных полос (каждый 4-й, чтобы не раздувать тест)
+    <out>/<k>shot/fabric_XX/test/defect/         - квадраты дефектных полос, в которых есть дефект по маске
+    <out>/<k>shot/fabric_XX/ground_truth/defect/ - маски этих квадратов (объединение mask, mask1, mask2)
+Квадраты дефектных полос БЕЗ дефекта по маске в тест не идут (во избежание неразмеченных дефектов).
+Позиции на краю полосы, где в кадр попадает фон (а не ткань), исключаются целиком (и из эталонов, и из теста):
+позиция исключается, если на нормальных полосах этой ткани в ней в среднем больше --bg-frac пикселей фона
+(очень светлые >= 250 или очень тёмные <= 5). Список исключённых позиций печатается.
+Эталонная полоса в тест не попадает.
 
-Пример:  python3 summarize_v3.py --res v3res
+Пример:
+  python3 prepare_aitex.py --root ~/aitex/archive --out ~/aitex_prepared --shots 1 4
 """
-import argparse, glob, json, os, warnings
-warnings.filterwarnings('ignore')
+import argparse, glob, os, re
+from collections import defaultdict
 import numpy as np
-from bootstrap_ci import auroc, fpr_at_tpr
+from PIL import Image
 
-# Ткань попадает в средние, только если в ней не меньше стольких дефектных тайлов
-# (по этому правилу из таблиц выпадает ткань 05: в ней один дефектный тайл).
-MIN_DEF = 5
+NAME = re.compile(r'^(\d{4})_(\d{3})_(\d{2})\.png$')   # снимок_дефект_ткань
 
 
-def load(path):
-    """Читает json с оценками тайлов и возвращает список записей; None, если файла нет или он повреждён."""
-    try:
-        return json.load(open(path))['records']
-    except Exception:
-        return None
+def tiles(arr, T):
+    n = arr.shape[1] // T
+    return [arr[:T, i * T:(i + 1) * T] for i in range(n)]
 
 
-def per_cat(recs, method, metric=auroc):
-    """Считает метрику отдельно по каждой ткани для одного метода.
-
-    recs   - записи из json (служебные записи __time__ пропускаются);
-    method - какой метод брать, если в файле их несколько (например, plain и affine_iso лежат в одном файле);
-    metric - функция метрики: AUROC по умолчанию, можно передать fpr_at_tpr.
-
-    Возвращает {ткань: (значение метрики, число дефектных тайлов, число нормальных тайлов)}.
-    """
-    by = {}
-    for r in recs:
-        # пропускаем служебные записи со временем и записи других методов
-        if r.get('key') == '__time__' or r.get('method') != method:
-            continue
-        by.setdefault(r['category'], []).append(r)   # группируем записи по ткани
-    out = {}
-    for c, rs in sorted(by.items()):
-        lab = [x['label'] for x in rs]; sc = [x['score'] for x in rs]   # метки (0 норма, 1 дефект) и оценки тайлов
-        out[c] = (metric(sc, lab), sum(lab), len(lab) - sum(lab))       # метрика, дефектных, нормальных
-    return out
-
-
-def times(recs, method):
-    """Служебные записи __time__ выбранного метода: {ткань: запись со временем и контрольными AUROC}."""
-    return {r['category']: r for r in recs if r.get('key') == '__time__' and r.get('method') == method}
-
-
-def mean_ok(pc):
-    """Среднее метрики по тканям, где дефектных тайлов не меньше MIN_DEF.
-
-    pc - результат per_cat. Возвращает (среднее, список учтённых тканей); nan, если таких тканей нет.
-    """
-    ok = [c for c, v in pc.items() if v[1] >= MIN_DEF]
-    return (np.mean([pc[c][0] for c in ok]) if ok else np.nan), ok
-
-
-def row(name, pc, cats):
-    """Строка таблицы: имя метода, значение по каждой ткани из cats (прочерк, если данных нет) и среднее после '|'.
-
-    В строке показаны все ткани, а среднее считается только по учитываемым (см. mean_ok).
-    """
-    m, ok = mean_ok(pc)
-    cells = ' '.join(f'{pc[c][0]:.3f}' if c in pc else '  -  ' for c in cats)
-    return f'{name:22s} {cells}   | {m:.3f}'
+def background_positions(strips, T, bg_frac):
+    """Индексы квадратов, в которых на нормальных полосах заметная доля фона."""
+    fr = None
+    for p in strips:
+        g = np.asarray(Image.open(p).convert('L'))
+        t = [((x >= 250) | (x <= 5)).mean() for x in tiles(g, T)]
+        fr = np.array(t) if fr is None else fr + np.array(t)
+    fr = fr / len(strips)
+    return [i for i, f in enumerate(fr) if f > bg_frac], fr
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--res', default='v3res')     # папка с json-файлами результатов
+    ap.add_argument('--root', required=True, help='папка archive (в ней Defect_images, Mask_images, NODefect_images)')
+    ap.add_argument('--out', required=True)
+    ap.add_argument('--shots', nargs='+', type=int, default=[1, 4])
+    ap.add_argument('--tile', type=int, default=256)
+    ap.add_argument('--good-every', type=int, default=4, help='из нормальных полос брать каждый N-й квадрат')
+    ap.add_argument('--min-defect-px', type=int, default=20, help='квадрат считается дефектным, если в маске не меньше стольких пикселей')
+    ap.add_argument('--bg-frac', type=float, default=0.01, help='порог доли пикселей фона для исключения позиции')
+    ap.add_argument('--keep-edges', action='store_true', help='не исключать краевые позиции (старое поведение)')
     a = ap.parse_args()
-    R = lambda f: load(os.path.join(a.res, f))    # прочитать файл из папки результатов по имени
+    root, out, T = os.path.expanduser(a.root), os.path.expanduser(a.out), a.tile
 
-    def spec(tag):
-        # Какие файлы и методы нужны для набора с меткой tag. Каждая тройка: (файл, метод внутри файла, название в таблице).
-        # plain и OURS full лежат в одном файле ours_*.json и различаются полем method.
-        return [(f'ours_{tag}.json', 'plain', 'plain'), (f'light_{tag}.json', 'affine', 'light (fit only)'),
-                (f'ours_{tag}.json', 'affine_iso', 'OURS full'), (f'pcA_{tag}.json', 'patchcore_A', 'PatchCore A'),
-                (f'pcB_{tag}.json', 'patchcore_B', 'PatchCore B'), (f'padim_{tag}.json', 'padim', 'PaDiM')]
-
-    #Три основные таблицы: основной дизайн (1 и 4 эталона) и контроль (нормальные тайлы взяты из дефектных полос) ----
-    for tag, title in (('s0_1', 'ОСНОВНОЙ, 1 эталон'), ('s0_4', 'ОСНОВНОЙ, 4 эталона'), ('ctrl_1', 'КОНТРОЛЬ (норма из дефектных полос), 1 эталон')):
-        print(f'\n=== {title}: AUROC по изображению ===')
-        # tabs: {название метода: результат per_cat}; методы, для которых нет файла, пропускаются
-        tabs = {}
-        for f, m, name in spec(tag):
-            recs = R(f)
-            if recs:
-                tabs[name] = per_cat(recs, m)
-        if not tabs:
-            print('  нет данных'); continue
-        cats = sorted(set().union(*[set(t) for t in tabs.values()]))   # все ткани, встретившиеся хотя бы у одного метода
-        any_t = next(iter(tabs.values()))                              # состав набора (число тайлов) один для всех методов
-        print('состав: ' + ', '.join(f'{c[-2:]}: деф {any_t[c][1]}, норм {any_t[c][2]}' for c in cats if c in any_t))
-        print(f'{"метод":22s} ' + ' '.join(f'{c[-2:]:>5s}' for c in cats) + '   | среднее (ткани с >=5 деф.)')
-        for name, pc in tabs.items():
-            print(row(name, pc, cats))
-        # AUROC по пикселям (качество локализации) и FPR95 (доля ложных тревог при обнаружении 95 % дефектов)
-        print('  AUROC по пикселям (среднее по учитываемым тканям) и FPR при полноте 95 % (среднее):')
-        for f, m, name in spec(tag):
-            recs = R(f)
-            if not recs:
-                continue
-            tm = times(recs, m); pc = per_cat(recs, m); _, ok = mean_ok(pc)
-            # пиксельный AUROC не считается по оценкам тайлов: его записала модель в служебную запись __time__
-            pix = [tm[c].get('pixel_AUROC') for c in ok if c in tm and tm[c].get('pixel_AUROC') is not None]
-            fp = per_cat(recs, m, fpr_at_tpr)   # та же функция, но с другой метрикой: FPR95 вместо AUROC
-            print(f'    {name:22s} пиксели {np.mean(pix) if pix else float("nan"):.3f}   FPR95 {np.mean([fp[c][0] for c in ok]):.3f}')
-        # Правило решения из протокола: наш метод не хуже лучшего PatchCore в среднем И выигрывает не меньше чем на половине тканей
-        if 'OURS full' in tabs and ('PatchCore A' in tabs or 'PatchCore B' in tabs):
-            ours = tabs['OURS full']; mo, ok = mean_ok(ours)
-            # лучший из двух PatchCore по среднему AUROC (чтобы конкурента нельзя было счесть ослабленным)
-            best = max([n for n in ('PatchCore A', 'PatchCore B') if n in tabs], key=lambda n: mean_ok(tabs[n])[0])
-            pb, _ = mean_ok(tabs[best])
-            wins = sum(ours[c][0] > tabs[best][c][0] for c in ok if c in tabs[best])    # ткани, где мы строго выше
-            ties = sum(ours[c][0] == tabs[best][c][0] for c in ok if c in tabs[best])   # ничьи; в победы не входят
-            print(f'  ПРАВИЛО: лучший PatchCore = {best} ({pb:.3f}); наш {mo:.3f}; не хуже в среднем: {mo >= pb}; '
-                  f'побед {wins} из {len(ok)} (ничьих {ties}); половина: {wins >= len(ok) / 2}')
-
-    # Разброс по выбору эталона: прогоны s0..s5 с другой полосой и позицией эталона (один эталон) ----
-    # Если файлов s1_1..s5_1 в папке нет, блок ничего не печатает.
-    print('\n=== РАЗБРОС ПО ВЫБОРУ ЭТАЛОНА (1 эталон, случайные полоса и позиция) ===')
-    rows = []
-    for s in range(0, 6):
-        tag = f's{s}_1'
-        vals = {}
-        for f, m, name in spec(tag)[:4]: # первые четыре метода: plain, light, OURS full, PatchCore A
-            recs = R(f)
-            if recs:
-                vals[name] = mean_ok(per_cat(recs, m))[0]   # среднее AUROC по учитываемым тканям
-        if vals:
-            rows.append((s, vals))
-            print(f'  seed {s}: ' + '  '.join(f'{k} {v:.3f}' for k, v in vals.items()) +
-                  (f'   | наш - PatchCore A = {vals["OURS full"] - vals["PatchCore A"]:+.3f}' if 'OURS full' in vals and 'PatchCore A' in vals else ''))
-    # сводка по выбору эталона: среднее, стандартное отклонение, минимум и максимум для каждого метода
-    for name in ('plain', 'light (fit only)', 'OURS full', 'PatchCore A'):
-        v = [r[1][name] for r in rows if name in r[1]]
-        if len(v) > 1:
-            print(f'  {name:22s} среднее {np.mean(v):.3f}, ст. откл. {np.std(v, ddof=1):.3f}, мин {min(v):.3f}, макс {max(v):.3f}  (n={len(v)})')
-    # разность «наш - PatchCore A» при разных выборах эталона и в скольких выборах она положительна
-    d = [r[1]['OURS full'] - r[1]['PatchCore A'] for r in rows if 'OURS full' in r[1] and 'PatchCore A' in r[1]]
-    if len(d) > 1:
-        print(f'  разница наш - PatchCore A по выборам эталона: среднее {np.mean(d):+.3f}, мин {min(d):+.3f}, макс {max(d):+.3f}, '
-              f'положительна в {sum(x > 0 for x in d)} из {len(d)}')
-
-    # Абляция и чувствительность: какой вклад вносит каждая деталь метода (файлы abl_*.json и sens_*.json) ----
-    print('\n=== АБЛЯЦИЯ И ЧУВСТВИТЕЛЬНОСТЬ (основной набор, 1 эталон; среднее AUROC по учитываемым тканям) ===')
-    for f in sorted(glob.glob(os.path.join(a.res, 'abl_*.json')) + glob.glob(os.path.join(a.res, 'sens_*.json'))):
-        recs = load(f)
-        if not recs:
+    # нормальные полосы по тканям
+    normal = defaultdict(list)
+    for p in sorted(glob.glob(os.path.join(root, 'NODefect_images', '*', '*.png'))):
+        b = os.path.basename(p)
+        m = NAME.match(b)
+        if b.startswith('._') or not m:
+            print('пропущен (нестандартное имя):', p)
             continue
-        for m in sorted({r['method'] for r in recs}):   # в файле может быть несколько методов
-            pc = per_cat(recs, m); mo, ok = mean_ok(pc)
-            tm = times(recs, m)
-            t3 = tm.get('fabric_03', {}).get('seconds_total')   # время на ткани 03, если записано
-            print(f'  {os.path.basename(f)[:-5]:28s} {m:11s} AUROC {mo:.3f}   ' + ' '.join(f'{c[-2:]}:{pc[c][0]:.3f}' for c in ok) +
-                  (f'   время ткани 03: {t3:.0f} с' if t3 else ''))
+        normal[m.group(3)].append(p)
 
-    # Проверка инвариантности: тестовые снимки умножены на общий множитель яркости (файлы gain_*.json) ----
-    # Если метод не зависит от общего усиления яркости, AUROC почти не должен меняться.
-    print('\n=== ОБЩЕЕ УСИЛЕНИЕ ЯРКОСТИ ТЕСТОВЫХ СНИМКОВ (проверка инвариантности; без обрезки значений) ===')
-    for f in sorted(glob.glob(os.path.join(a.res, 'gain_*.json'))):
-        recs = load(f)
-        if not recs:
+    # дефектные полосы и их маски
+    defect = defaultdict(list)
+    for p in sorted(glob.glob(os.path.join(root, 'Defect_images', '*.png'))):
+        b = os.path.basename(p)
+        m = NAME.match(b)
+        if b.startswith('._') or not m:
             continue
-        for m in sorted({r['method'] for r in recs}):
-            mo, _ = mean_ok(per_cat(recs, m))
-            print(f'  {os.path.basename(f)[:-5]:20s} {m:11s} AUROC {mo:.3f}')
+        defect[m.group(3)].append(p)
 
-    #Время работы на ткани 03 (основной набор, 1 эталон): для PatchCore включает построение банка по эталонам ----
-    print('\n=== ВРЕМЯ (ткань 03, основной набор, 1 эталон) ===')
-    for f, m, name in spec('s0_1'):
-        recs = R(f)
-        if recs:
-            t = times(recs, m).get('fabric_03')
-            if t:
-                n = t.get('n_images') # число тестовых снимков, если записано
-                print(f'  {name:22s} {t.get("seconds_fit_test", t.get("seconds_total")):.0f} с' + (f' на {n} снимков' if n else ''))
+    def load_mask(p):
+        stem = os.path.splitext(os.path.basename(p))[0]
+        files = [f for f in glob.glob(os.path.join(root, 'Mask_images', stem + '_mask*.png')) if not os.path.basename(f).startswith('._')]
+        if not files:
+            return None
+        ms = [np.asarray(Image.open(f).convert('L')) > 127 for f in files]
+        return np.logical_or.reduce(ms)
+
+    for k in a.shots:
+        for fab in sorted(normal):
+            dst = os.path.join(out, f'{k}shot', f'fabric_{fab}')
+            for d in ('train/good', 'test/good', 'test/defect', 'ground_truth/defect'):
+                os.makedirs(os.path.join(dst, d), exist_ok=True)
+            strips = normal[fab]
+            ref = np.asarray(Image.open(strips[0]).convert('RGB'))
+            rt = tiles(ref, T)
+            bad, fr = ([], None) if a.keep_edges else background_positions(strips, T, a.bg_frac)
+            allowed = [i for i in range(len(rt)) if i not in bad]
+            if bad:
+                print(f'  fabric_{fab}: исключены позиции с фоном {bad} (доля фона: ' +
+                      ', '.join(f'{i}:{fr[i]:.2f}' for i in bad) + ')')
+            # эталоны: k квадратов, равномерно среди разрешённых позиций первой нормальной полосы
+            pick = np.linspace(0, len(allowed) - 1, k + 2)[1:-1].round().astype(int) if k < len(allowed) else range(len(allowed))
+            idx = [allowed[j] for j in pick]
+            for i in idx:
+                Image.fromarray(rt[i]).save(os.path.join(dst, 'train', 'good', f'ref_{i:02d}.png'))
+            ng = 0
+            for p in strips[1:]:
+                st = tiles(np.asarray(Image.open(p).convert('RGB')), T)
+                for i in allowed[::a.good_every]:
+                    Image.fromarray(st[i]).save(os.path.join(dst, 'test', 'good', f'{os.path.basename(p)[:-4]}_t{i:02d}.png'))
+                    ng += 1
+            nd = 0
+            for p in defect.get(fab, []):
+                mk = load_mask(p)
+                if mk is None:
+                    print('нет маски для', os.path.basename(p))
+                    continue
+                st = tiles(np.asarray(Image.open(p).convert('RGB')), T)
+                mt = tiles(mk.astype(np.uint8) * 255, T)
+                for i, (t, mm) in enumerate(zip(st, mt)):
+                    if i in bad:
+                        continue
+                    if (mm > 0).sum() >= a.min_defect_px:
+                        name = f'{os.path.basename(p)[:-4]}_t{i:02d}'
+                        Image.fromarray(t).save(os.path.join(dst, 'test', 'defect', name + '.png'))
+                        Image.fromarray(mm).save(os.path.join(dst, 'ground_truth', 'defect', name + '_mask.png'))
+                        nd += 1
+            print(f'{k}shot/fabric_{fab}: эталонов {len(list(idx))}, нормальных тестовых {ng}, дефектных тестовых {nd} '
+                  f'(дефектных полос {len(defect.get(fab, []))})')
 
 
 if __name__ == '__main__':
